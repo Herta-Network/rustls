@@ -27,7 +27,8 @@ use crate::{Tls12CipherSuite, compress};
 mod config;
 pub use config::{
     ClientConfig, ClientCredentialResolver, ClientSessionKey, ClientSessionStore,
-    CredentialRequest, Resumption, TicketRequest, Tls12Resumption, WantsClientCert,
+    CredentialRequest, RealityCallback, Resumption, TicketRequest, Tls12Resumption,
+    WantsClientCert,
 };
 
 mod connection;

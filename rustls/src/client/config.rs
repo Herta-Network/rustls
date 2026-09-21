@@ -16,7 +16,7 @@ use crate::client::connection::ClientConnectionBuilder;
 use crate::common_state::Protocol;
 #[cfg(doc)]
 use crate::crypto;
-use crate::crypto::kx::NamedGroup;
+use crate::crypto::kx::{ActiveKeyExchange, NamedGroup};
 use crate::crypto::{CipherSuite, CryptoProvider, SelectedCredential, SignatureScheme, hash};
 #[cfg(feature = "webpki")]
 use crate::crypto::{Credentials, Identity, SingleCredential};
@@ -30,6 +30,18 @@ use crate::verify::ServerVerifier;
 #[cfg(feature = "webpki")]
 use crate::webpki::{self, WebPkiServerVerifier};
 use crate::{DistinguishedName, DynHasher, KeyLog, compress};
+
+/// Callback for REALITY protocol injection
+pub trait RealityCallback: fmt::Debug + Send + Sync {
+    /// Applies the REALITY protocol logic, modifying the session ID if necessary.
+    fn apply_reality(
+        &self,
+        kx: &dyn ActiveKeyExchange,
+        random: &[u8; 32],
+        session_id: &mut [u8; 32], // Modifies in place
+        raw_hello: &[u8],
+    ) -> Result<(), Error>;
+}
 
 /// Common configuration for (typically) all connections made by a program.
 ///
@@ -185,6 +197,9 @@ pub struct ClientConfig {
 
     /// How to offer Encrypted Client Hello (ECH). The default is to not offer ECH.
     pub(super) ech_mode: Option<EchMode>,
+
+    /// Configuration for REALITY protocol.
+    pub reality_callback: Option<Arc<dyn RealityCallback>>,
 }
 
 impl ClientConfig {
@@ -784,6 +799,7 @@ impl ConfigBuilder<ClientConfig, WantsClientCert> {
             cert_compressors: compress::default_cert_compressors().to_vec(),
             cert_compression_cache: Arc::new(compress::CompressionCache::default()),
             ech_mode: self.state.client_ech_mode,
+            reality_callback: None,
         })
     }
 }

@@ -71,8 +71,8 @@ impl From<[u8; 32]> for Random {
 
 #[derive(Copy, Clone)]
 pub(crate) struct SessionId {
-    data: [u8; 32],
-    len: usize,
+    pub(crate) data: [u8; 32],
+    pub(crate) len: usize,
 }
 
 impl SessionId {

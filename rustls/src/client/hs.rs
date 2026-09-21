@@ -27,10 +27,10 @@ use crate::hash_hs::HandshakeHashBuffer;
 use crate::kernel::KernelState;
 use crate::msgs::{
     CertificateStatusRequest, ClientExtensions, ClientExtensionsInput, ClientHelloPayload,
-    ClientSessionTicket, ClientTicketRequest, Compression, EncryptedClientHello, ExtensionType,
-    HandshakeMessagePayload, HandshakePayload, HelloRetryRequest, KeyShareEntry, Message,
-    MessagePayload, PskKeyExchangeModes, Random, ServerHelloPayload, ServerNamePayload, SessionId,
-    SupportedEcPointFormats, SupportedProtocolVersions, TransportParameters,
+    ClientSessionTicket, ClientTicketRequest, Codec, Compression, EncryptedClientHello,
+    ExtensionType, HandshakeMessagePayload, HandshakePayload, HelloRetryRequest, KeyShareEntry,
+    Message, MessagePayload, PskKeyExchangeModes, Random, ServerHelloPayload, ServerNamePayload,
+    SessionId, SupportedEcPointFormats, SupportedProtocolVersions, TransportParameters,
 };
 use crate::sealed::Sealed;
 use crate::suites::{PartiallyExtractedSecrets, Suite, SupportedCipherSuite};
@@ -858,6 +858,26 @@ fn emit_client_hello_for_retry(
     input.hello.offered_cipher_suites = chp_payload.cipher_suites.clone();
 
     let mut chp = HandshakeMessagePayload(HandshakePayload::ClientHello(chp_payload));
+
+    if let Some(rc) = &config.reality_callback {
+        if let Some(GroupAndKeyShare { share, .. }) = &key_share {
+            if let HandshakePayload::ClientHello(chp_inner) = &mut chp.0 {
+                // VERY IMPORTANT: Initialize to 32 zeros BEFORE computing raw_hello
+                chp_inner.session_id.len = 32;
+                chp_inner.session_id.data = [0u8; 32];
+            }
+            let raw_hello = chp.get_encoding();
+
+            if let HandshakePayload::ClientHello(chp_inner) = &mut chp.0 {
+                rc.apply_reality(
+                    &**share,
+                    &input.random.0,
+                    &mut chp_inner.session_id.data,
+                    &raw_hello,
+                )?;
+            }
+        }
+    }
 
     let tls13_early_data_key_schedule = match (ech_state.as_mut(), tls13_session) {
         // If we're performing ECH and resuming, then the PSK binder will have been dealt with
