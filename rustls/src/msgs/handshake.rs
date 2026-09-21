@@ -118,8 +118,8 @@ impl From<[u8; 32]> for Random {
 
 #[derive(Copy, Clone)]
 pub(crate) struct SessionId {
-    len: usize,
-    data: [u8; 32],
+    pub(crate) len: usize,
+    pub(crate) data: [u8; 32],
 }
 
 impl fmt::Debug for SessionId {

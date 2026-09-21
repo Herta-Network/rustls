@@ -13,7 +13,7 @@ use crate::builder::ConfigBuilder;
 use crate::client::{EchMode, EchStatus};
 use crate::common_state::{CommonState, Protocol, Side};
 use crate::conn::{ConnectionCore, UnbufferedConnectionCommon};
-use crate::crypto::{CryptoProvider, SupportedKxGroup};
+use crate::crypto::{ActiveKeyExchange, CryptoProvider, SupportedKxGroup};
 use crate::enums::{CipherSuite, ProtocolVersion, SignatureScheme};
 use crate::error::Error;
 use crate::kernel::KernelConnection;
@@ -132,6 +132,22 @@ pub trait ResolvesClientCert: fmt::Debug + Send + Sync {
     fn has_certs(&self) -> bool;
 }
 
+/// Per-connection REALITY ClientHello authentication hook.
+///
+/// Implementations receive a ClientHello encoded with a zeroed, 32-byte
+/// session ID and replace that ID with authenticated ciphertext. Use a fresh
+/// callback per connection and disable resumption, early data and ECH.
+pub trait RealityCallback: fmt::Debug + Send + Sync {
+    /// Authenticate this ClientHello using its ephemeral key exchange.
+    fn apply_reality(
+        &self,
+        kx: &dyn ActiveKeyExchange,
+        random: &[u8; 32],
+        session_id: &mut [u8; 32],
+        raw_hello: &[u8],
+    ) -> Result<(), Error>;
+}
+
 /// Common configuration for (typically) all connections made by a program.
 ///
 /// Making one of these is cheap, though one of the inputs may be expensive: gathering trust roots
@@ -162,6 +178,8 @@ pub trait ResolvesClientCert: fmt::Debug + Send + Sync {
 /// [`RootCertStore`]: crate::RootCertStore
 #[derive(Clone, Debug)]
 pub struct ClientConfig {
+    /// Optional REALITY authentication; ordinary TLS leaves this unset.
+    pub reality_callback: Option<Arc<dyn RealityCallback>>,
     /// Which ALPN protocols we include in our client hello.
     /// If empty, no ALPN extension is sent.
     pub alpn_protocols: Vec<Vec<u8>>,

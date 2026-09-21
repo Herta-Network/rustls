@@ -22,6 +22,7 @@ use crate::{Error, OtherError};
 pub mod hpke;
 /// Post-quantum secure algorithms.
 pub(crate) mod pq;
+pub mod reality;
 /// Using software keys for authentication.
 pub mod sign;
 

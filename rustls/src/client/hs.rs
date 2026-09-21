@@ -1,3 +1,4 @@
+use crate::msgs::codec::Codec;
 use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use alloc::vec;
@@ -447,6 +448,36 @@ fn emit_client_hello_for_retry(
     input.hello.offered_cipher_suites = chp_payload.cipher_suites.clone();
 
     let mut chp = HandshakeMessagePayload(HandshakePayload::ClientHello(chp_payload));
+
+    if let Some(callback) = &config.reality_callback {
+        if retryreq.is_some()
+            || config.ech_mode.is_some()
+            || tls13_session.is_some()
+            || cx.common.is_quic()
+            || config.enable_early_data
+        {
+            return Err(Error::General(
+                "REALITY requires a fresh TCP TLS 1.3 handshake without ECH or early data".into(),
+            ));
+        }
+        let share = key_share
+            .as_ref()
+            .ok_or_else(|| Error::General("REALITY requires a TLS 1.3 key share".into()))?;
+        if let HandshakePayload::ClientHello(hello) = &mut chp.0 {
+            hello.session_id.len = 32;
+            hello.session_id.data = [0; 32];
+        }
+        let raw_hello = chp.get_encoding();
+        if let HandshakePayload::ClientHello(hello) = &mut chp.0 {
+            callback.apply_reality(
+                share.as_ref(),
+                &input.random.0,
+                &mut hello.session_id.data,
+                &raw_hello,
+            )?;
+            input.session_id = hello.session_id;
+        }
+    }
 
     let tls13_early_data_key_schedule = match (ech_state.as_mut(), tls13_session) {
         // If we're performing ECH and resuming, then the PSK binder will have been dealt with

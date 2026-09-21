@@ -431,6 +431,12 @@ pub trait SupportedKxGroup: Send + Sync + Debug {
 
 /// An in-progress key exchange originating from a [`SupportedKxGroup`].
 pub trait ActiveKeyExchange: Send + Sync {
+    /// Derive a REALITY authentication secret without consuming this exchange.
+    /// Unsupported providers and groups return `None`.
+    fn extract_reality_key(&self, _server_pub_key: &[u8]) -> Option<Vec<u8>> {
+        None
+    }
+
     /// Completes the key exchange, given the peer's public key.
     ///
     /// This method must return an error if `peer_pub_key` is invalid: either
