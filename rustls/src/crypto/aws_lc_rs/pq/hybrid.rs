@@ -103,6 +103,10 @@ struct ActiveHybrid {
 }
 
 impl ActiveKeyExchange for ActiveHybrid {
+    fn extract_reality_key(&self, peer: &[u8]) -> Option<Vec<u8>> {
+        self.classical.extract_reality_key(peer)
+    }
+
     fn complete(self: Box<Self>, peer_pub_key: &[u8]) -> Result<SharedSecret, Error> {
         let (post_quantum_share, classical_share) = self
             .layout

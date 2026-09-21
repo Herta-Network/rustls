@@ -138,6 +138,11 @@ pub trait ResolvesClientCert: fmt::Debug + Send + Sync {
 /// session ID and replace that ID with authenticated ciphertext. Use a fresh
 /// callback per connection and disable resumption, early data and ECH.
 pub trait RealityCallback: fmt::Debug + Send + Sync {
+    /// Observe the exact encoded ServerHello for transcript-bound authentication.
+    fn server_hello(&self, _encoded: &[u8]) -> Result<(), Error> {
+        Ok(())
+    }
+
     /// Authenticate this ClientHello using its ephemeral key exchange.
     fn apply_reality(
         &self,

@@ -725,6 +725,11 @@ impl State<ClientConnectionData> for ExpectServerHello {
 
         use crate::ProtocolVersion::{TLSv1_2, TLSv1_3};
         let config = &self.input.config;
+        if let Some(callback) = &config.reality_callback {
+            if let MessagePayload::Handshake { encoded, .. } = &m.payload {
+                callback.server_hello(encoded.bytes())?;
+            }
+        }
         let tls13_supported = config.supports_version(TLSv1_3, cx.common.protocol);
 
         let server_version = if server_hello.legacy_version == TLSv1_2 {

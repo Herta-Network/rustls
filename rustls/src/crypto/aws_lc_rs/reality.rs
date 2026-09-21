@@ -9,6 +9,8 @@ use aws_lc_rs::agreement;
 /// Select this group explicitly for REALITY clients. Standard provider defaults
 /// are unaffected.
 pub static X25519: &dyn SupportedKxGroup = &RealityX25519;
+/// X25519MLKEM768 with non-consuming REALITY authentication through X25519.
+pub use super::pq::REALITY_X25519MLKEM768 as X25519MLKEM768;
 
 #[derive(Debug)]
 struct RealityX25519;
@@ -63,6 +65,41 @@ impl ActiveKeyExchange for Active {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hybrid_authentication_and_tls_secret_use_the_same_classical_key() {
+        let client = X25519MLKEM768.start().unwrap();
+        let server_static = X25519.start().unwrap();
+        let (_, classical) = client.hybrid_component().unwrap();
+        assert_eq!(
+            client
+                .extract_reality_key(server_static.pub_key())
+                .unwrap(),
+            server_static
+                .extract_reality_key(classical)
+                .unwrap()
+        );
+        let server = X25519MLKEM768
+            .start_and_complete(client.pub_key())
+            .unwrap();
+        assert_eq!(
+            client
+                .complete(&server.pub_key)
+                .unwrap()
+                .secret_bytes(),
+            server.secret.secret_bytes()
+        );
+        let client = X25519MLKEM768.start().unwrap();
+        let expected = client
+            .extract_reality_key(server_static.pub_key())
+            .unwrap();
+        assert_eq!(
+            client
+                .complete_hybrid_component(server_static.pub_key())
+                .unwrap()
+                .secret_bytes(),
+            expected
+        );
+    }
     #[test]
     fn extraction_does_not_consume_handshake_key() {
         let a = X25519.start().unwrap();

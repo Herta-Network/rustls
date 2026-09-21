@@ -23,6 +23,19 @@ pub static X25519MLKEM768: &dyn SupportedKxGroup = &hybrid::Hybrid {
     },
 };
 
+/// REALITY-capable hybrid using the same classical share for authentication.
+pub static REALITY_X25519MLKEM768: &dyn SupportedKxGroup = &hybrid::Hybrid {
+    classical: super::reality::X25519,
+    post_quantum: MLKEM768,
+    name: NamedGroup::X25519MLKEM768,
+    layout: hybrid::Layout {
+        classical_share_len: X25519_LEN,
+        post_quantum_client_share_len: MLKEM768_ENCAP_LEN,
+        post_quantum_server_share_len: MLKEM768_CIPHERTEXT_LEN,
+        post_quantum_first: true,
+    },
+};
+
 /// This is the [SECP256R1MLKEM768] key exchange.
 ///
 /// [SECP256R1MLKEM768]: <https://datatracker.ietf.org/doc/draft-ietf-tls-ecdhe-mlkem/>
